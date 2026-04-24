@@ -1,0 +1,126 @@
+# AppArmor profile for CIS sandbox execution containers.
+#
+# INSTALLATION (on each Docker host):
+#   sudo cp execution/apparmor/cis-runner /etc/apparmor.d/cis-runner
+#   sudo apparmor_parser -r /etc/apparmor.d/cis-runner
+#
+# ACTIVATION (docker-compose / runner.py):
+#   Set APPARMOR_PROFILE=cis-runner in your .env  — the worker will then pass
+#   security_opt: ["apparmor:cis-runner"] to every task container.
+#
+# DESIGN GOALS:
+#   This profile complements (it does not replace) the seccomp profile and the
+#   Docker capability drop.  Together they form three independent defence layers:
+#     1. capability drop  — removes elevated POSIX capabilities
+#     2. seccomp          — allowlists kernel syscalls
+#     3. AppArmor         — restricts file paths, network families, and mount ops
+#
+# SECURITY RATIONALE:
+#   - deny mount:     Prevents the container from remounting paths read-write or
+#                     pivoting the root — a classic container-escape technique.
+#   - deny ptrace:    Prevents tracing host processes visible through a shared
+#                     PID namespace (even with user-namespace tricks).
+#   - deny @{PROC}/** write:  Prevents /proc manipulation used in some escapes
+#                             (e.g. writing to /proc/sysrq-trigger).
+#   - deny network raw/packet: Prevents raw-socket attacks if network_mode is
+#                              ever relaxed in future.
+#   - /tmp/** rw:     The only writable path; mirrors the tmpfs mount.
+#   - /usr/** r, /lib/** r, /bin/** r, /sbin/** r: Read-only access to
+#                     system libraries and binaries needed by Ansible/Python.
+
+#include <tunables/global>
+
+profile cis-runner flags=(attach_disconnected,mediate_deleted) {
+
+  #include <abstractions/base>
+  #include <abstractions/python>
+
+  # -----------------------------------------------------------------------
+  # Filesystem: only /tmp is writable
+  # -----------------------------------------------------------------------
+  /tmp/**                   rw,
+  /tmp/                     r,
+
+  /usr/**                   r,
+  /usr/bin/**               ix,
+  /usr/lib/**               mr,
+  /usr/local/**             r,
+  /usr/local/bin/**         ix,
+  /usr/local/lib/**         mr,
+
+  /lib/**                   mr,
+  /lib64/**                 mr,
+  /bin/**                   ix,
+  /sbin/**                  ix,
+
+  /etc/ansible/**           r,
+  /etc/ssh/**               r,
+  /etc/hosts                r,
+  /etc/resolv.conf          r,
+  /etc/nsswitch.conf        r,
+  /etc/passwd               r,
+  /etc/group                r,
+  /etc/ld.so.cache          r,
+  /etc/ld.so.conf           r,
+  /etc/ld.so.conf.d/**      r,
+
+  /proc/*/status            r,
+  /proc/*/maps              r,
+  /proc/cpuinfo             r,
+  /proc/meminfo             r,
+  /proc/sys/kernel/random/uuid r,
+
+  /runner/                  r,
+
+  # -----------------------------------------------------------------------
+  # Deny: filesystem manipulation that enables container escapes
+  # -----------------------------------------------------------------------
+  deny mount,
+  deny umount,
+  deny pivot_root,
+
+  # -----------------------------------------------------------------------
+  # Deny: inter-process inspection
+  # -----------------------------------------------------------------------
+  deny ptrace,
+  deny @{PROC}/** w,
+  deny @{PROC}/** wl,
+
+  # -----------------------------------------------------------------------
+  # Deny: raw / packet sockets (no network access anyway, belt-and-suspenders)
+  # -----------------------------------------------------------------------
+  network inet  stream,
+  network inet6 stream,
+  deny network raw,
+  deny network packet,
+
+  # -----------------------------------------------------------------------
+  # Signals: only allow signals within the same profile (self-contained)
+  # -----------------------------------------------------------------------
+  signal (send, receive) peer=cis-runner,
+
+  # -----------------------------------------------------------------------
+  # Capabilities: allow only what Ansible/Python need.
+  # NOTE: setuid/setgid are intentionally NOT granted here.  The seccomp
+  # profile already blocks the underlying setuid/setgid syscalls, so granting
+  # the capability at the AppArmor level would be both misleading and
+  # unnecessary.  ansible-playbook 'become: local' does not require a real
+  # privilege change when running as a non-root user inside a container.
+  # -----------------------------------------------------------------------
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability fsetid,
+  deny capability setuid,
+  deny capability setgid,
+  deny capability sys_admin,
+  deny capability sys_ptrace,
+  deny capability sys_rawio,
+  deny capability net_admin,
+  deny capability net_raw,
+  deny capability sys_module,
+  deny capability sys_boot,
+  deny capability mknod,
+  deny capability audit_write,
+  deny capability audit_control,
+}

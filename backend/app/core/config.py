@@ -32,9 +32,13 @@ class Settings(BaseSettings):
     # Docker / execution sandbox
     DOCKER_SOCKET: str = "/var/run/docker.sock"
     EXECUTION_IMAGE: str = "cis-runner:latest"
-    TASK_TIMEOUT: int = 300          # seconds
+    TASK_TIMEOUT: int = 300          # seconds; Docker-level hard kill timeout
     MAX_MEMORY: str = "256m"
     MAX_CPUS: float = 0.5
+    # Seccomp profile path inside the worker container (mounted via docker-compose)
+    SECCOMP_PROFILE_PATH: str = "/etc/seccomp/profile.json"
+    # AppArmor profile name loaded on the Docker host; empty string = disabled
+    APPARMOR_PROFILE: str = ""
 
     # CORS
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "https://localhost"]

@@ -60,8 +60,12 @@ def execute_script_task(self, task_id: str) -> dict:
         task.exit_code = result.exit_code
         task.container_id = result.container_id
         task.finished_at = datetime.now(timezone.utc)
+        # exit code 124 = soft timeout: the `timeout` command inside the
+        # container sent SIGTERM and the process did not exit in time.
+        # result.timed_out = hard timeout: Docker's container.wait() expired
+        # and container.kill() (SIGKILL) was sent.  Both map to TaskStatus.timeout.
         task.status = (
-            TaskStatus.timeout if result.timed_out
+            TaskStatus.timeout if (result.timed_out or result.exit_code == 124)
             else TaskStatus.success if result.exit_code == 0
             else TaskStatus.failed
         )

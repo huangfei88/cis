@@ -45,6 +45,19 @@ class DockerRunner:
     ) -> RunResult:
         container = None
         container_id = "unknown"
+        # SECURITY: in-container soft timeout is 20 s shorter than Docker's hard
+        # kill so the process can exit cleanly (exit 124) before being SIGKILL'd.
+        exec_timeout = max(settings.TASK_TIMEOUT - 20, 60)
+
+        # Build security_opt dynamically so AppArmor can be disabled without
+        # code changes (just leave APPARMOR_PROFILE empty in config).
+        security_opt = [
+            "no-new-privileges:true",
+            f"seccomp:{settings.SECCOMP_PROFILE_PATH}",
+        ]
+        if settings.APPARMOR_PROFILE:
+            security_opt.append(f"apparmor:{settings.APPARMOR_PROFILE}")
+
         try:
             logger.info("Starting container for task %s", task_id)
             container = self._client.containers.run(
@@ -57,6 +70,8 @@ class DockerRunner:
                     "SCRIPT_CONTENT": base64.b64encode(
                         script_content.encode("utf-8")
                     ).decode("ascii"),
+                    # Soft timeout enforced inside the container by the entrypoint
+                    "EXEC_TIMEOUT": str(exec_timeout),
                     **(
                         {f"CIS_PARAM_{self._sanitize_param_name(k)}": str(v) for k, v in parameters.items()}
                         if parameters else {}
@@ -66,10 +81,16 @@ class DockerRunner:
                 network_mode="none",
                 read_only=True,
                 mem_limit=settings.MAX_MEMORY,
+                # memswap_limit == mem_limit disables swap, preventing swap-based
+                # memory-exhaustion attacks.
+                memswap_limit=settings.MAX_MEMORY,
                 nano_cpus=int(settings.MAX_CPUS * 1_000_000_000),
-                security_opt=["no-new-privileges:true"],
+                security_opt=security_opt,
                 cap_drop=["ALL"],
-                tmpfs={"/tmp": "size=64m,noexec,nosuid"},
+                # nodev: prevents device-file creation inside /tmp (container escape vector)
+                tmpfs={"/tmp": "size=64m,noexec,nosuid,nodev"},
+                # pids_limit: prevents fork-bomb exhaustion of the host PID namespace
+                pids_limit=100,
                 auto_remove=False,
                 detach=True,
                 labels={"cis.task_id": task_id},
