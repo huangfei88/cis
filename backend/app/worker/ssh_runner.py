@@ -4,6 +4,7 @@ import base64
 import hashlib
 import io
 import logging
+import os
 import socket
 from dataclasses import dataclass, field
 
@@ -96,8 +97,9 @@ class SSHRunner:
 
             client.connect(**connect_kwargs)
         finally:
-            # Clear secret from memory as soon as it's no longer needed
-            secret = ""  # noqa: S001
+            # SECURITY: best-effort memory clearing; Python does not guarantee
+            # immediate GC or memory zeroing, but this limits the window.
+            secret = ""
 
         new_fingerprint: str | None = None
         if stored_fingerprint is None and policy.observed_fingerprint is not None:
@@ -105,7 +107,7 @@ class SSHRunner:
 
         result = SSHRunResult()
         try:
-            remote_path = f"/tmp/cis_{hashlib.md5(script_content.encode()).hexdigest()}.sh"
+            remote_path = f"/tmp/cis_{os.urandom(8).hex()}.sh"
             sftp = client.open_sftp()
             try:
                 with sftp.file(remote_path, "w") as fh:

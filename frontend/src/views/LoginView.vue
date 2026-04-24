@@ -123,9 +123,14 @@ async function handleMfaLogin() {
 function _applyTokens(data) {
   localStorage.setItem('access_token', data.access_token)
   localStorage.setItem('refresh_token', data.refresh_token)
-  const payload = JSON.parse(atob(data.access_token.split('.')[1]))
-  auth.user = { id: payload.sub, username: payload.username, role: payload.role }
-  localStorage.setItem('user', JSON.stringify(auth.user))
+  try {
+    const payload = JSON.parse(atob(data.access_token.split('.')[1]))
+    auth.user = { id: payload.sub, username: payload.username, role: payload.role }
+    localStorage.setItem('user', JSON.stringify(auth.user))
+  } catch {
+    error.value = 'Login error: could not decode session token'
+    return
+  }
   router.push(route.query.redirect || '/scripts')
 }
 </script>

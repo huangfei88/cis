@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("CIS backend starting (env=%s)", settings.APP_ENV)
+    # SECURITY: refuse to start in production with the default insecure master key
+    if settings.APP_ENV == "production" and settings.CREDENTIAL_MASTER_KEY == "0" * 64:
+        raise RuntimeError(
+            "CREDENTIAL_MASTER_KEY must be set to a secure random 64-hex-char value in production"
+        )
     await init_db()
     yield
     logger.info("CIS backend shutting down")

@@ -146,7 +146,7 @@ async def login(
     user.last_login_at = now
     await db.flush()
 
-    token_data = {"sub": str(user.id), "username": user.username, "role": user.role}
+    token_data = {"sub": str(user.id), "username": user.username, "role": user.role, "mfa_enabled": user.mfa_enabled}
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
 
@@ -196,7 +196,7 @@ async def refresh(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found")
     await add_token_to_blacklist(payload.refresh_token, redis)
-    token_data = {"sub": str(user.id), "username": user.username, "role": user.role}
+    token_data = {"sub": str(user.id), "username": user.username, "role": user.role, "mfa_enabled": user.mfa_enabled}
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),

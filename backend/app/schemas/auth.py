@@ -3,6 +3,9 @@ from __future__ import annotations
 from pydantic import BaseModel, EmailStr, field_validator
 
 
+_SPECIAL_CHARS: frozenset[str] = frozenset('!@#$%^&*()_+-=[]{}|;:\'",.<>?/`~\\')
+
+
 class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
@@ -23,8 +26,7 @@ class RegisterRequest(BaseModel):
             raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
-        special = set('!@#$%^&*()_+-=[]{}|;:\'",.<>?/`~\\')
-        if not any(c in special for c in v):
+        if not any(c in _SPECIAL_CHARS for c in v):
             raise ValueError("Password must contain at least one special character")
         return v
 
@@ -84,7 +86,7 @@ class ChangePasswordRequest(BaseModel):
             raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
-        special = set('!@#$%^&*()_+-=[]{}|;:\'",.<>?/`~\\')
+        special = _SPECIAL_CHARS
         if not any(c in special for c in v):
             raise ValueError("Password must contain at least one special character")
         return v

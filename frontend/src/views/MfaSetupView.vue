@@ -21,14 +21,9 @@
         </el-button>
 
         <template v-if="otpUri">
-          <p style="word-break:break-all;font-size:0.85em;color:#475569">
-            <strong>OTP URI:</strong> {{ otpUri }}
-          </p>
-          <p>
-            <a :href="qrUrl" target="_blank">
-              <img :src="qrUrl" alt="QR Code" style="border:1px solid #e2e8f0;border-radius:4px" />
-            </a>
-          </p>
+          <p style="margin-bottom:8px">Scan this QR code with your authenticator app:</p>
+          <!-- QR code rendered locally – OTP URI never sent to any third party -->
+          <canvas ref="qrCanvas" style="border:1px solid #e2e8f0;border-radius:4px;display:block;margin-bottom:12px"></canvas>
           <el-form @submit.prevent="enableMfa" style="margin-top:12px">
             <el-form-item label="Verification Code">
               <el-input v-model="verifyCode" placeholder="123456" maxlength="6" style="width:200px" />
@@ -56,12 +51,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import axios from 'axios'
-import { useAuthStore } from '@/stores/auth.js'
+import QRCode from 'qrcode'
 import { ElMessage } from 'element-plus'
 
-const auth = useAuthStore()
 const mfaEnabled = ref(false)
 const otpUri = ref('')
 const verifyCode = ref('')
@@ -70,25 +64,20 @@ const setupLoading = ref(false)
 const enableLoading = ref(false)
 const disableLoading = ref(false)
 const errorMsg = ref('')
-
-const qrUrl = computed(() => {
-  if (!otpUri.value) return ''
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpUri.value)}`
-})
+const qrCanvas = ref(null)
 
 function authHeaders() {
   return { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
 }
 
 onMounted(() => {
-  // Derive MFA status from JWT payload stored in auth store
   const token = localStorage.getItem('access_token')
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
       mfaEnabled.value = !!payload.mfa_enabled
     } catch {
-      // ignore
+      // ignore malformed token
     }
   }
 })
@@ -99,6 +88,11 @@ async function setupMfa() {
   try {
     const { data } = await axios.post('/api/v1/auth/mfa/setup', {}, { headers: authHeaders() })
     otpUri.value = data.uri
+    // Render QR code client-side after the canvas is mounted
+    await nextTick()
+    if (qrCanvas.value) {
+      await QRCode.toCanvas(qrCanvas.value, data.uri, { width: 200, errorCorrectionLevel: 'M' })
+    }
   } catch (err) {
     errorMsg.value = err.response?.data?.detail || 'Setup failed'
   } finally {
