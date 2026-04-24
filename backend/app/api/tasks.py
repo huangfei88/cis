@@ -15,6 +15,8 @@ from app.worker.celery_app import celery_app
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
+_MAX_PER_PAGE = 100
+
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
@@ -60,6 +62,7 @@ async def list_tasks(
     page: int = 1,
     per_page: int = 20,
 ) -> list[Task]:
+    per_page = min(per_page, _MAX_PER_PAGE)
     offset = (page - 1) * per_page
     result = await db.execute(
         select(Task)

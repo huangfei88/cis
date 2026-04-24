@@ -80,7 +80,11 @@ def require_role(*roles: str):
 
 
 def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # SECURITY: prefer X-Real-IP which nginx sets to $remote_addr (the actual
+    # connecting socket IP).  X-Forwarded-For is NOT used here because an
+    # attacker can prepend arbitrary values to it; using the first element
+    # would allow IP spoofing in audit logs.
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
     return request.client.host if request.client else "unknown"

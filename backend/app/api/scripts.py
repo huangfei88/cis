@@ -7,12 +7,14 @@ from sqlalchemy.future import select
 from app.core.database import get_db
 from app.core.deps import get_client_ip, get_current_user, require_role
 from app.models.script import Script, ScriptStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.script import ScriptCreate, ScriptResponse, ScriptReviewRequest
 from app.services.audit_service import AuditService
 from app.services.script_validator import ScriptValidator
 
 router = APIRouter(prefix="/scripts", tags=["scripts"])
+
+_MAX_PER_PAGE = 100
 
 
 @router.get("/", response_model=list[ScriptResponse])
@@ -23,6 +25,7 @@ async def list_scripts(
     per_page: int = 20,
 ) -> list[Script]:
     """List approved scripts (all authenticated users)."""
+    per_page = min(per_page, _MAX_PER_PAGE)
     offset = (page - 1) * per_page
     result = await db.execute(
         select(Script)
@@ -82,6 +85,14 @@ async def get_script(
     script = await db.get(Script, script_id)
     if not script:
         raise HTTPException(status_code=404, detail="Script not found")
+    # SECURITY: non-approved scripts are visible only to the submitter,
+    # reviewers, and admins.  Returning a 404 (rather than 403) avoids leaking
+    # that the script exists at all.
+    if script.status != ScriptStatus.approved:
+        is_privileged = current_user.role in (UserRole.admin, UserRole.reviewer)
+        is_owner = str(script.submitted_by) == str(current_user.id)
+        if not is_privileged and not is_owner:
+            raise HTTPException(status_code=404, detail="Script not found")
     return script
 
 
