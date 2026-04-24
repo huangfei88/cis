@@ -204,7 +204,7 @@ async def refresh(
     )
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def logout(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -241,7 +241,7 @@ async def mfa_setup(
     return MfaSetupResponse(uri=uri)
 
 
-@router.post("/mfa/enable", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/mfa/enable", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def mfa_enable(
     payload: MfaEnableRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -255,7 +255,7 @@ async def mfa_enable(
     await db.flush()
 
 
-@router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def mfa_disable(
     payload: MfaDisableRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -274,7 +274,7 @@ async def mfa_disable(
 # Change password
 # ---------------------------------------------------------------------------
 
-@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def change_password(
     payload: ChangePasswordRequest,
     request: Request,

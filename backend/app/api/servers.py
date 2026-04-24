@@ -116,7 +116,7 @@ async def update_server(
     return server
 
 
-@router.delete("/{server_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{server_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_server(
     server_id: str,
     request: Request,

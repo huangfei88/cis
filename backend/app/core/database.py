@@ -32,10 +32,12 @@ async def get_db():
 
 async def init_db() -> None:
     from app.models.base import Base  # noqa: F401 – registers all models
-    import app.models.user    # noqa: F401
-    import app.models.script  # noqa: F401
-    import app.models.task    # noqa: F401
-    import app.models.audit   # noqa: F401
+    import app.models.user        # noqa: F401
+    import app.models.script      # noqa: F401
+    import app.models.task        # noqa: F401
+    import app.models.audit       # noqa: F401
+    import app.models.server      # noqa: F401
+    import app.models.credential  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

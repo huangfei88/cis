@@ -87,7 +87,7 @@ async def get_credential(
     return credential
 
 
-@router.delete("/{credential_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{credential_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_credential(
     credential_id: str,
     request: Request,
