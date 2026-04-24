@@ -1,5 +1,3 @@
-version: "3.9"
-
 # SECURITY principles:
 # - Only nginx exposes ports (80/443) to the host.
 # - All backend services communicate over isolated Docker networks.

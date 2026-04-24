@@ -1,5 +1,7 @@
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
+# email-validator required by pydantic EmailStr used in RegisterRequest / UserResponse
+email-validator==2.1.1
 sqlalchemy==2.0.30
 alembic==1.13.1
 asyncpg==0.29.0

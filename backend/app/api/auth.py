@@ -1,5 +1,6 @@
 from datetime import timedelta
 from typing import Annotated
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import JWTError
@@ -116,7 +117,15 @@ async def refresh(
     if await is_token_blacklisted(payload.refresh_token, redis):
         raise HTTPException(status_code=401, detail="Refresh token revoked")
 
-    result = await db.execute(select(User).where(User.id == claims.get("sub")))
+    sub: str | None = claims.get("sub")
+    if not sub:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    try:
+        user_uuid = uuid.UUID(sub)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
     user: User | None = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found")

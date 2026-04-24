@@ -1,4 +1,5 @@
 from typing import Annotated
+import uuid
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -51,7 +52,12 @@ async def get_current_user(
     if not user_id:
         raise exc
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise exc
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
     user: User | None = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise exc
