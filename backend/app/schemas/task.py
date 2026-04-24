@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import uuid
 from datetime import datetime
@@ -14,6 +16,8 @@ _MAX_PARAMS_BYTES = 4_096
 class TaskCreate(BaseModel):
     script_id: uuid.UUID
     parameters: dict | None = None
+    server_id: uuid.UUID | None = None
+    credential_id: uuid.UUID | None = None
 
     @field_validator("parameters")
     @classmethod
@@ -38,5 +42,9 @@ class TaskResponse(BaseModel):
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime
+    server_id: uuid.UUID | None
+    credential_id: uuid.UUID | None
+    log_object_key: str | None
+    timeout_seconds: int
 
     model_config = {"from_attributes": True}

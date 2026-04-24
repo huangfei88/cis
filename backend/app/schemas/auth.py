@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, EmailStr, field_validator
 
 
@@ -9,12 +11,21 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def password_strength(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters")
         # SECURITY: cap bcrypt input — bcrypt silently truncates at 72 bytes,
         # but an extremely long password (e.g. 1 MiB) is a CPU-DoS vector.
         if len(v) > 128:
             raise ValueError("Password must be at most 128 characters")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        special = set('!@#$%^&*()_+-=[]{}|;:\'",.<>?/`~\\')
+        if not any(c in special for c in v):
+            raise ValueError("Password must contain at least one special character")
         return v
 
     @field_validator("username")
@@ -30,6 +41,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    mfa_code: str | None = None
 
 
 class TokenResponse(BaseModel):
@@ -41,3 +53,38 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class MfaSetupResponse(BaseModel):
+    uri: str
+
+
+class MfaEnableRequest(BaseModel):
+    code: str
+
+
+class MfaDisableRequest(BaseModel):
+    code: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_strength(cls, v: str) -> str:
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters")
+        if len(v) > 128:
+            raise ValueError("Password must be at most 128 characters")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        special = set('!@#$%^&*()_+-=[]{}|;:\'",.<>?/`~\\')
+        if not any(c in special for c in v):
+            raise ValueError("Password must contain at least one special character")
+        return v

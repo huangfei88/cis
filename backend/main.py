@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, scripts, tasks, admin
+from app.api import auth, scripts, tasks, admin, servers, credentials
 from app.core.config import settings
 from app.core.database import init_db
 
@@ -38,10 +38,12 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
-app.include_router(auth.router,    prefix="/api/v1")
-app.include_router(scripts.router, prefix="/api/v1")
-app.include_router(tasks.router,   prefix="/api/v1")
-app.include_router(admin.router,   prefix="/api/v1")
+app.include_router(auth.router,        prefix="/api/v1")
+app.include_router(scripts.router,     prefix="/api/v1")
+app.include_router(tasks.router,       prefix="/api/v1")
+app.include_router(admin.router,       prefix="/api/v1")
+app.include_router(servers.router,     prefix="/api/v1")
+app.include_router(credentials.router, prefix="/api/v1")
 
 
 @app.middleware("http")

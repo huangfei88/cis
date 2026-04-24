@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -6,7 +8,9 @@ from sqlalchemy.future import select
 
 from app.core.database import get_db
 from app.core.deps import get_client_ip, get_current_user
+from app.models.credential import Credential
 from app.models.script import Script, ScriptStatus
+from app.models.server import Server
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse
@@ -14,7 +18,6 @@ from app.services.audit_service import AuditService
 from app.worker.celery_app import celery_app
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
-
 _MAX_PER_PAGE = 100
 
 
@@ -25,32 +28,53 @@ async def create_task(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> Task:
-    """Create and enqueue a task. Script must be approved."""
     script = await db.get(Script, str(payload.script_id))
     if not script:
         raise HTTPException(status_code=404, detail="Script not found")
     if script.status != ScriptStatus.approved:
         raise HTTPException(status_code=409, detail="Script is not approved for execution")
 
+    # Optional server validation
+    if payload.server_id is not None:
+        server = await db.get(Server, str(payload.server_id))
+        if not server:
+            raise HTTPException(status_code=404, detail="Server not found")
+        if str(server.owner_id) != str(current_user.id) and current_user.role.value != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to use this server")
+
+    # Optional credential validation
+    if payload.credential_id is not None:
+        credential = await db.get(Credential, str(payload.credential_id))
+        if not credential:
+            raise HTTPException(status_code=404, detail="Credential not found")
+        if (
+            str(credential.owner_id) != str(current_user.id)
+            and current_user.role.value != "admin"
+        ):
+            raise HTTPException(status_code=403, detail="Not authorized to use this credential")
+
     task = Task(
         script_id=payload.script_id,
         user_id=current_user.id,
         parameters=payload.parameters,
         status=TaskStatus.queued,
+        server_id=payload.server_id,
+        credential_id=payload.credential_id,
     )
     db.add(task)
     await db.flush()
-
-    # SECURITY: Control Plane never executes scripts directly.
-    # The task is handed off to the Celery worker via Redis queue.
     celery_app.send_task("execute_script_task", args=[str(task.id)])
-
     await AuditService.log_action(
-        db, action="task.create", user_id=current_user.id,
-        resource_type="task", resource_id=str(task.id),
+        db,
+        action="task.create",
+        user_id=current_user.id,
+        resource_type="task",
+        resource_id=str(task.id),
         ip_address=get_client_ip(request),
-        request_path=request.url.path, request_method=request.method,
+        request_path=request.url.path,
+        request_method=request.method,
         status_code=201,
+        result="success",
     )
     return task
 

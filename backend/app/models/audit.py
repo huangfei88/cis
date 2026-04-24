@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 
@@ -29,6 +31,7 @@ class AuditLog(Base):
     request_method: Mapped[str | None] = mapped_column(String(16), nullable=True)
     status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    result: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} action={self.action}>"

@@ -8,6 +8,8 @@ import app.models.user    # noqa: F401
 import app.models.script  # noqa: F401
 import app.models.task    # noqa: F401
 import app.models.audit   # noqa: F401
+import app.models.server      # noqa: F401
+import app.models.credential  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

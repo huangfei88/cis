@@ -43,5 +43,13 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "https://localhost"]
 
+    # Credential encryption (32-byte key as 64 hex chars, MUST be overridden in production)
+    CREDENTIAL_MASTER_KEY: str = "0" * 64
+    # Session / lockout settings
+    MAX_ACTIVE_SESSIONS: int = 3
+    PASSWORD_MAX_AGE_DAYS: int = 90
+    ACCOUNT_LOCKOUT_ATTEMPTS: int = 5
+    ACCOUNT_LOCKOUT_MINUTES: int = 15
+
 
 settings = Settings()

@@ -12,6 +12,15 @@
         <el-menu-item index="/tasks">
           <el-icon><List /></el-icon> My Tasks
         </el-menu-item>
+        <el-menu-item index="/servers">
+          <el-icon><Monitor /></el-icon> Servers
+        </el-menu-item>
+        <el-menu-item index="/credentials">
+          <el-icon><Key /></el-icon> Credentials
+        </el-menu-item>
+        <el-menu-item index="/profile/mfa">
+          <el-icon><Lock /></el-icon> MFA Setup
+        </el-menu-item>
         <template v-if="auth.isReviewer">
           <el-divider />
           <el-menu-item index="/admin/scripts">

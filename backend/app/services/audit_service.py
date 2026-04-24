@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -21,6 +23,7 @@ class AuditService:
         request_method: str | None = None,
         status_code: int | None = None,
         detail: dict[str, Any] | None = None,
+        result: str | None = None,
     ) -> None:
         entry = AuditLog(
             created_at=datetime.now(timezone.utc),
@@ -34,6 +37,7 @@ class AuditService:
             request_method=request_method,
             status_code=status_code,
             detail=detail,
+            result=result,
         )
         db.add(entry)
         await db.flush()
